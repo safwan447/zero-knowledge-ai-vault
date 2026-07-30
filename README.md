@@ -56,8 +56,26 @@ Client setup will be added in Phase 3 (client-side crypto + workspace UI).
 ## Build phases
 
 1. ✅ Repo scaffold + Mongoose schemas
-2. Auth (register/login, JWT cookies, Argon2, RBAC middleware)
+2. ✅ Auth (register/login, JWT cookies, Argon2, RBAC middleware)
 3. Client-side crypto (PBKDF2 + AES-GCM)
 4. Vault endpoints (encrypted prompt CRUD)
 5. RAG pipeline (embeddings + vector search + AI API)
 6. Frontend workspace UI
+
+## Auth
+
+Multi-tenancy is invite-code based:
+
+- **First user on a team** registers without an `inviteCode` → becomes that team's `admin`, a new `Team` is created, and the response includes a `teamInviteCode` to share with teammates.
+- **Everyone else** registers *with* that `inviteCode` → joins the same team as a `member`.
+
+### Endpoints
+
+| Method | Route | Auth required | Body | Notes |
+|---|---|---|---|---|
+| POST | `/api/auth/register` | No | `{ email, password, teamName }` or `{ email, password, inviteCode }` | Creates a team (admin) or joins one (member) |
+| POST | `/api/auth/login` | No | `{ email, password }` | Issues JWT in an httpOnly cookie |
+| POST | `/api/auth/logout` | No | - | Clears the auth cookie |
+| GET | `/api/auth/me` | Yes | - | Returns the logged-in user, used by the frontend to check session state |
+
+Passwords are hashed with **Argon2**. Sessions are JWTs stored in `httpOnly`, `SameSite` cookies (never `localStorage`), so they can't be read or stolen via XSS. Auth routes are rate-limited separately (20 req/15min) to slow down brute-force attempts. Route-level access control is enforced with `requireAuth` (verifies the session) and `requireRole('admin')` (gates by role), both in `server/middleware/`.
