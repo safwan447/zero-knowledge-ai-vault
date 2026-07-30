@@ -57,7 +57,7 @@ Client setup will be added in Phase 3 (client-side crypto + workspace UI).
 
 1. ✅ Repo scaffold + Mongoose schemas
 2. ✅ Auth (register/login, JWT cookies, Argon2, RBAC middleware)
-3. Client-side crypto (PBKDF2 + AES-GCM)
+3. ✅ Client-side crypto (PBKDF2 + AES-GCM)
 4. Vault endpoints (encrypted prompt CRUD)
 5. RAG pipeline (embeddings + vector search + AI API)
 6. Frontend workspace UI
@@ -79,3 +79,9 @@ Multi-tenancy is invite-code based:
 | GET | `/api/auth/me` | Yes | - | Returns the logged-in user, used by the frontend to check session state |
 
 Passwords are hashed with **Argon2**. Sessions are JWTs stored in `httpOnly`, `SameSite` cookies (never `localStorage`), so they can't be read or stolen via XSS. Auth routes are rate-limited separately (20 req/15min) to slow down brute-force attempts. Route-level access control is enforced with `requireAuth` (verifies the session) and `requireRole('admin')` (gates by role), both in `server/middleware/`.
+
+## Client-side crypto
+
+`client/src/utils/crypto.js` is the zero-knowledge engine. A master secret (chosen by the user, never sent to the server) plus a random salt are run through **PBKDF2** (250,000 iterations, SHA-256) to derive a 256-bit **AES-GCM** key. That key encrypts the prompt text entirely in the browser - the server only ever receives `encryptedPromptText`, `iv`, and `salt`. Wrong master secret on decrypt throws an error rather than returning garbled text, since AES-GCM verifies integrity as part of decryption.
+
+`client/src/components/CryptoDemo.jsx` is a temporary test harness to verify the encrypt/decrypt roundtrip visually - it'll be replaced by the real vault UI in Phase 6.
