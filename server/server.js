@@ -29,7 +29,7 @@ const globalLimiter = rateLimit({
 app.use(globalLimiter);
 
 // --- Routes (wired up as we build each phase) ---
-// app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/auth', require('./routes/authRoutes'));
 // app.use('/api/vault', require('./routes/vaultRoutes'));
 // app.use('/api/ai', require('./routes/aiRoutes'));
 
