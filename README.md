@@ -58,7 +58,7 @@ Client setup will be added in Phase 3 (client-side crypto + workspace UI).
 1. ✅ Repo scaffold + Mongoose schemas
 2. ✅ Auth (register/login, JWT cookies, Argon2, RBAC middleware)
 3. ✅ Client-side crypto (PBKDF2 + AES-GCM)
-4. Vault endpoints (encrypted prompt CRUD)
+4. ✅ Vault endpoints (encrypted prompt CRUD)
 5. RAG pipeline (embeddings + vector search + AI API)
 6. Frontend workspace UI
 
@@ -85,3 +85,17 @@ Passwords are hashed with **Argon2**. Sessions are JWTs stored in `httpOnly`, `S
 `client/src/utils/crypto.js` is the zero-knowledge engine. A master secret (chosen by the user, never sent to the server) plus a random salt are run through **PBKDF2** (250,000 iterations, SHA-256) to derive a 256-bit **AES-GCM** key. That key encrypts the prompt text entirely in the browser - the server only ever receives `encryptedPromptText`, `iv`, and `salt`. Wrong master secret on decrypt throws an error rather than returning garbled text, since AES-GCM verifies integrity as part of decryption.
 
 `client/src/components/CryptoDemo.jsx` is a temporary test harness to verify the encrypt/decrypt roundtrip visually - it'll be replaced by the real vault UI in Phase 6.
+
+## Vault endpoints
+
+All routes below require a logged-in session (`requireAuth`) and are scoped to the requester's `teamId` - a valid prompt ID from another team returns `404`, not the data.
+
+| Method | Route | Notes |
+|---|---|---|
+| POST | `/api/vault/prompts` | Store an already-encrypted prompt (`encryptedPromptText`, `iv`, `salt`, `title`, `tags`) |
+| GET | `/api/vault/prompts` | List all prompts for the team |
+| GET | `/api/vault/prompts/:id` | Get one prompt |
+| PUT | `/api/vault/prompts/:id` | Creates a **new version** (doesn't overwrite - `parentVersion` links back to the original, so history is preserved) |
+| DELETE | `/api/vault/prompts/:id` | Prompt owner or team admin only |
+
+Every action (create/read/update/delete) writes an entry to `AuditLog` via `utils/logAction.js`.
