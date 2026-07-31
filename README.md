@@ -61,6 +61,7 @@ Client setup will be added in Phase 3 (client-side crypto + workspace UI).
 4. ✅ Vault endpoints (encrypted prompt CRUD)
 5. RAG pipeline (embeddings + vector search + AI API)
 6. Frontend workspace UI
+7. Hardening + deploy (input validation, tests, CI, live deployment)
 
 ## Auth
 
