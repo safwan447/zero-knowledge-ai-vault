@@ -59,7 +59,7 @@ Client setup will be added in Phase 3 (client-side crypto + workspace UI).
 2. ✅ Auth (register/login, JWT cookies, Argon2, RBAC middleware)
 3. ✅ Client-side crypto (PBKDF2 + AES-GCM)
 4. ✅ Vault endpoints (encrypted prompt CRUD)
-5. RAG pipeline (embeddings + vector search + AI API)
+5. ✅ RAG pipeline (embeddings + vector search + AI API)
 6. Frontend workspace UI
 7. Hardening + deploy (input validation, tests, CI, live deployment)
 
@@ -100,3 +100,18 @@ All routes below require a logged-in session (`requireAuth`) and are scoped to t
 | DELETE | `/api/vault/prompts/:id` | Prompt owner or team admin only |
 
 Every action (create/read/update/delete) writes an entry to `AuditLog` via `utils/logAction.js`.
+
+## RAG pipeline
+
+`POST /api/ai/query` (body: `{ query, masterSecret }`) is the AI-powered part of the vault. Since prompts are encrypted at rest, meaningful retrieval requires a moment of plaintext access - here's exactly how that's scoped:
+
+1. The team's encrypted prompts are fetched from MongoDB (ciphertext only)
+2. Each is decrypted **in server memory only**, using the `masterSecret` sent for this one request (never logged, never stored, never cached)
+3. The query and every decrypted prompt are embedded (Gemini `gemini-embedding-001`)
+4. Prompts are ranked by cosine similarity to the query; the top 3 matches become retrieved context
+5. An augmented prompt (query + retrieved context) is sent to Gemini (`gemini-flash-latest`) for the final answer
+6. Decrypted text, embeddings, and the master secret all go out of scope when the request returns - nothing persists
+
+A single prompt that fails to decrypt (e.g. corrupted data) is skipped individually rather than failing the whole request; the request only fails outright if *no* prompts decrypt, which usually means the master secret itself is wrong.
+
+Note: Gemini model names change as Google updates its lineup - `GEMINI_GENERATE_MODEL` in `utils/geminiClient.js` uses the `-latest` alias specifically to stay current without code changes, but it's worth a quick sanity check before any live demo.
