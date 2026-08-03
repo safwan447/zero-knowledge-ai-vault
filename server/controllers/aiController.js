@@ -31,9 +31,14 @@ const queryVault = async (req, res) => {
     const encryptedPrompts = await PromptVault.find({ teamId: req.user.teamId }).limit(100);
 
     if (encryptedPrompts.length === 0) {
-      // No stored context yet - just answer the query directly
-      const answer = await generateContent(query);
-      return res.status(200).json({ answer, usedContext: [] });
+      // No stored prompts at all - don't fall back to a generic, ungrounded
+      // AI answer. This tool is explicitly "answer from your vault", not a
+      // general chatbot, so say that plainly instead.
+      return res.status(200).json({
+        answer:
+          "Your vault doesn't have any saved prompts yet, so there's no context to answer from. Save a prompt first, then ask again.",
+        usedContext: [],
+      });
     }
 
     // Decrypt everything in memory. A single corrupted/incompatible entry
@@ -73,14 +78,17 @@ const queryVault = async (req, res) => {
       .map((m, i) => `[Context ${i + 1} - "${m.title}"]\n${m.text}`)
       .join('\n\n');
 
-    const augmentedPrompt = `You are helping a developer using context from their own saved prompts.
+    const augmentedPrompt = `You are answering strictly from a developer's private, encrypted prompt vault. You are NOT a general-purpose assistant for this request.
 
 ${contextBlock}
 
 User's question:
 ${query}
 
-Answer using the context above where relevant.`;
+Rules:
+- Answer using ONLY the context above.
+- If the context doesn't contain enough information to answer, say exactly that: the vault doesn't have relevant saved prompts for this question. Do not fill the gap with your own general knowledge.
+- Do not add disclaimers about being an AI - just answer from the context, or say it isn't there.`;
 
     const answer = await generateContent(augmentedPrompt);
 

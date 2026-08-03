@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { KeyRound, Eye, EyeOff } from 'lucide-react';
 import { useVaultSecret } from '../context/VaultSecretContext';
 
@@ -6,6 +7,7 @@ export default function UnlockVaultModal() {
   const { isUnlocked, setMasterSecret } = useVaultSecret();
   const [input, setInput] = useState('');
   const [show, setShow] = useState(false);
+  const navigate = useNavigate();
 
   if (isUnlocked) return null;
 
@@ -13,6 +15,7 @@ export default function UnlockVaultModal() {
     e.preventDefault();
     if (!input) return;
     setMasterSecret(input);
+    navigate('/library');
   };
 
   return (
