@@ -1,4 +1,5 @@
 const PromptVault = require('../models/PromptVault');
+const VaultCanary = require('../models/VaultCanary');
 const logAction = require('../utils/logAction');
 
 /**
@@ -178,4 +179,44 @@ const deletePrompt = async (req, res) => {
   }
 };
 
-module.exports = { createPrompt, getPrompts, getPromptById, updatePrompt, deletePrompt };
+/**
+ * GET /api/vault/canary
+ * Returns the team's canary ciphertext, if one exists yet. The client uses
+ * this to check whether the master secret it just typed in is correct.
+ */
+const getCanary = async (req, res) => {
+  try {
+    const canary = await VaultCanary.findOne({ teamId: req.user.teamId });
+    return res.status(200).json({ canary: canary || null });
+  } catch (err) {
+    console.error('Get canary error:', err.message);
+    return res.status(500).json({ message: 'Failed to fetch canary' });
+  }
+};
+
+/**
+ * POST /api/vault/canary
+ * Body: { encryptedCanary, iv, salt }
+ * Creates the team's canary the FIRST time someone unlocks with a given
+ * master secret. Once it exists, it's never overwritten - it's the fixed
+ * reference point every future unlock gets checked against.
+ */
+const setCanary = async (req, res) => {
+  try {
+    const existing = await VaultCanary.findOne({ teamId: req.user.teamId });
+    if (existing) {
+      return res.status(409).json({ message: 'Canary already exists for this team' });
+    }
+    const { encryptedCanary, iv, salt } = req.body;
+    if (!encryptedCanary || !iv || !salt) {
+      return res.status(400).json({ message: 'encryptedCanary, iv, and salt are required' });
+    }
+    const canary = await VaultCanary.create({ teamId: req.user.teamId, encryptedCanary, iv, salt });
+    return res.status(201).json({ canary });
+  } catch (err) {
+    console.error('Set canary error:', err.message);
+    return res.status(500).json({ message: 'Failed to create canary' });
+  }
+};
+
+module.exports = { createPrompt, getPrompts, getPromptById, updatePrompt, deletePrompt, getCanary, setCanary };

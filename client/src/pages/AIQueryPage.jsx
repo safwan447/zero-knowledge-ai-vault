@@ -25,7 +25,8 @@ export default function AIQueryPage() {
     setLoading(true);
 
     try {
-      const data = await api.post('/api/ai/query', { query, masterSecret });
+      const history = messages.slice(-6).map((m) => ({ role: m.role, text: m.text }));
+      const data = await api.post('/api/ai/query', { query, masterSecret, history });
       setMessages((m) => [...m, { role: 'assistant', text: data.answer, sources: data.usedContext }]);
     } catch (err) {
       setMessages((m) => [...m, { role: 'assistant', text: `Error: ${err.message}`, isError: true }]);

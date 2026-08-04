@@ -2,20 +2,62 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KeyRound, Eye, EyeOff } from 'lucide-react';
 import { useVaultSecret } from '../context/VaultSecretContext';
+import { api } from '../api/client';
+import { encryptPrompt, decryptPrompt } from '../utils/crypto';
+
+const CANARY_PLAINTEXT = 'zkvault-canary-v1';
 
 export default function UnlockVaultModal() {
   const { isUnlocked, setMasterSecret } = useVaultSecret();
   const [input, setInput] = useState('');
   const [show, setShow] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
 
   if (isUnlocked) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!input) return;
-    setMasterSecret(input);
-    navigate('/library');
+    if (!input || checking) return;
+    setError('');
+    setChecking(true);
+
+    try {
+      const { canary } = await api.get('/api/vault/canary');
+
+      if (!canary) {
+        // First time anyone on this team has unlocked - establish the
+        // canary using whatever secret was just entered. From now on,
+        // THIS is the correct secret for the team.
+        const encrypted = await encryptPrompt(CANARY_PLAINTEXT, input);
+        await api.post('/api/vault/canary', {
+          encryptedCanary: encrypted.encryptedPromptText,
+          iv: encrypted.iv,
+          salt: encrypted.salt,
+        });
+      } else {
+        // Canary already exists - verify the entered secret actually
+        // decrypts it back to the known value before trusting it.
+        const decrypted = await decryptPrompt(
+          { encryptedPromptText: canary.encryptedCanary, iv: canary.iv, salt: canary.salt },
+          input
+        ).catch(() => null);
+
+        if (decrypted !== CANARY_PLAINTEXT) {
+          setError('Incorrect master secret for this vault.');
+          setChecking(false);
+          return;
+        }
+      }
+
+      setMasterSecret(input);
+      navigate('/library');
+    } catch (err) {
+      setError(err.message || 'Could not verify master secret.');
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -32,6 +74,12 @@ export default function UnlockVaultModal() {
           Enter your master secret to decrypt prompts in this session. It's kept only in this
           tab's memory - never sent anywhere except the one request that needs it, and never saved.
         </p>
+
+        {error && (
+          <p className="mb-3 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">
+            {error}
+          </p>
+        )}
 
         <div className="relative mb-4">
           <input
@@ -53,9 +101,10 @@ export default function UnlockVaultModal() {
 
         <button
           type="submit"
-          className="w-full py-2 rounded-md text-sm font-medium bg-vault-accent text-vault-bg hover:bg-vault-accentDark transition-colors"
+          disabled={checking}
+          className="w-full py-2 rounded-md text-sm font-medium bg-vault-accent text-vault-bg hover:bg-vault-accentDark disabled:opacity-50 transition-colors"
         >
-          Unlock
+          {checking ? 'Verifying...' : 'Unlock'}
         </button>
       </form>
     </div>

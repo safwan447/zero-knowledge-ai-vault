@@ -8,7 +8,11 @@ const TOP_K = 3; // how many past prompts to retrieve as context
 
 /**
  * POST /api/ai/query
- * Body: { query, masterSecret }
+ * Body: { query, masterSecret, history? }
+ *
+ * history is a short list of prior { role, text } turns from THIS
+ * conversation, sent by the client each time (we don't persist chat
+ * history server-side) so follow-up questions have context.
  *
  * Flow:
  *  1. Fetch this team's encrypted prompts from MongoDB (ciphertext only)
@@ -16,12 +20,13 @@ const TOP_K = 3; // how many past prompts to retrieve as context
  *     request - never stored, never logged
  *  3. Embed each decrypted prompt + the user's query
  *  4. Rank by cosine similarity, take the top K most relevant past prompts
- *  5. Build an augmented prompt (query + retrieved context) and send to Gemini
+ *  5. Build an augmented prompt (conversation history + vault metadata +
+ *     retrieved context) and send to Gemini
  *  6. Return the answer - decrypted text and embeddings are discarded when
  *     this function returns; nothing touches the database
  */
 const queryVault = async (req, res) => {
-  const { query, masterSecret } = req.body;
+  const { query, masterSecret, history = [] } = req.body;
 
   if (!query || !masterSecret) {
     return res.status(400).json({ message: 'query and masterSecret are required' });
@@ -31,9 +36,6 @@ const queryVault = async (req, res) => {
     const encryptedPrompts = await PromptVault.find({ teamId: req.user.teamId }).limit(100);
 
     if (encryptedPrompts.length === 0) {
-      // No stored prompts at all - don't fall back to a generic, ungrounded
-      // AI answer. This tool is explicitly "answer from your vault", not a
-      // general chatbot, so say that plainly instead.
       return res.status(200).json({
         answer:
           "Your vault doesn't have any saved prompts yet, so there's no context to answer from. Save a prompt first, then ask again.",
@@ -78,17 +80,35 @@ const queryVault = async (req, res) => {
       .map((m, i) => `[Context ${i + 1} - "${m.title}"]\n${m.text}`)
       .join('\n\n');
 
+    // Vault-level facts the model can use for meta-questions ("how many
+    // prompts do I have") without needing them to semantically match the
+    // query the way content-retrieval does.
+    const vaultMeta = `Total prompts successfully decrypted in this vault: ${decryptedPrompts.length}
+All prompt titles: ${decryptedPrompts.map((p) => p.title).join(', ')}`;
+
+    const historyBlock = history.length
+      ? `Prior conversation in this session:\n${history
+          .map((h) => `${h.role === 'user' ? 'User' : 'Assistant'}: ${h.text}`)
+          .join('\n')}\n`
+      : '';
+
     const augmentedPrompt = `You are answering strictly from a developer's private, encrypted prompt vault. You are NOT a general-purpose assistant for this request.
 
+Vault metadata (always available, use for questions about the vault itself - counts, titles, etc.):
+${vaultMeta}
+
+Most relevant saved prompt content for this question:
 ${contextBlock}
 
-User's question:
+${historyBlock}User's current question:
 ${query}
 
 Rules:
-- Answer using ONLY the context above.
-- If the context doesn't contain enough information to answer, say exactly that: the vault doesn't have relevant saved prompts for this question. Do not fill the gap with your own general knowledge.
-- Do not add disclaimers about being an AI - just answer from the context, or say it isn't there.`;
+- Use the vault metadata for questions about the vault itself (how many prompts, what are they titled, etc.)
+- Use the retrieved prompt content for questions about what a prompt says or does.
+- Use the prior conversation to understand follow-up questions (e.g. "what about the second one").
+- If neither the metadata nor the content actually answers the question, say the vault doesn't have relevant information for it. Do not fill the gap with general knowledge.
+- Do not add disclaimers about being an AI - just answer.`;
 
     const answer = await generateContent(augmentedPrompt);
 
