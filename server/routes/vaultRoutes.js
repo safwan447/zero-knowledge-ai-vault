@@ -1,5 +1,7 @@
 const express = require('express');
 const requireAuth = require('../middleware/authMiddleware');
+const validate = require('../middleware/validate');
+const { promptBodySchema, canarySchema } = require('../validators/schemas');
 const {
   createPrompt,
   getPrompts,
@@ -16,11 +18,11 @@ const router = express.Router();
 router.use(requireAuth);
 
 router.get('/canary', getCanary);
-router.post('/canary', setCanary);
-router.post('/prompts', createPrompt);
+router.post('/canary', validate(canarySchema), setCanary);
+router.post('/prompts', validate(promptBodySchema), createPrompt);
 router.get('/prompts', getPrompts);
 router.get('/prompts/:id', getPromptById);
-router.put('/prompts/:id', updatePrompt);
+router.put('/prompts/:id', validate(promptBodySchema), updatePrompt);
 router.delete('/prompts/:id', deletePrompt);
 
 module.exports = router;

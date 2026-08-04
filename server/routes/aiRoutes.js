@@ -1,6 +1,8 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const requireAuth = require('../middleware/authMiddleware');
+const validate = require('../middleware/validate');
+const { aiQuerySchema } = require('../validators/schemas');
 const { queryVault } = require('../controllers/aiController');
 
 const router = express.Router();
@@ -16,6 +18,6 @@ const aiLimiter = rateLimit({
 });
 
 router.use(requireAuth);
-router.post('/query', aiLimiter, queryVault);
+router.post('/query', aiLimiter, validate(aiQuerySchema), queryVault);
 
 module.exports = router;
