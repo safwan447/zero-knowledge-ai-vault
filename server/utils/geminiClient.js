@@ -14,7 +14,7 @@
 const https = require('https');
 
 const GEMINI_EMBED_MODEL = 'gemini-embedding-001';
-const GEMINI_GENERATE_MODEL = 'gemini-flash-latest';
+const GEMINI_GENERATE_MODEL = 'gemini-flash-lite-latest';
 const HOST = 'generativelanguage.googleapis.com';
 
 /**
