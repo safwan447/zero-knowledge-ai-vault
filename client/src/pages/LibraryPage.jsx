@@ -92,7 +92,7 @@ export default function LibraryPage() {
         </p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-6 pb-6 animate-fade-in">
         {!loading && filtered.length === 0 && (
           <EmptyState onCreate={() => navigate('/prompts/new')} />
         )}
@@ -102,7 +102,7 @@ export default function LibraryPage() {
             <button
               key={p._id}
               onClick={() => navigate(`/prompts/${p._id}`)}
-              className="text-left bg-vault-panel border border-vault-border rounded-lg p-4 hover:border-vault-accent/50 transition-colors group"
+              className="text-left bg-vault-panel border border-vault-border rounded-lg p-4 hover:border-vault-accent/50 hover:shadow-lg hover:shadow-vault-accent/5 hover:-translate-y-0.5 transition-all duration-200 group"
             >
               <div className="flex items-start justify-between mb-2">
                 <h3 className="text-sm font-semibold text-vault-text group-hover:text-vault-accent transition-colors">

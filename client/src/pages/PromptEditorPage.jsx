@@ -137,9 +137,9 @@ export default function PromptEditorPage() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto p-6 max-w-3xl w-full mx-auto space-y-4">
+      <div className="flex-1 overflow-y-auto p-6 max-w-3xl w-full mx-auto space-y-5 animate-fade-in">
         {error && (
-          <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-md px-3 py-2">
+          <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
             {error}
           </p>
         )}
@@ -151,22 +151,24 @@ export default function PromptEditorPage() {
             setDirty(true);
           }}
           placeholder="Prompt title"
-          className="w-full bg-transparent text-lg font-semibold text-vault-text focus:outline-none border-b border-vault-border pb-2"
+          className="w-full bg-transparent text-2xl font-bold text-vault-text placeholder:text-vault-muted/50 focus:outline-none border-b border-vault-border focus:border-vault-accent pb-3 transition-colors"
         />
 
         <div>
-          <label className="flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wide text-vault-accent mb-2">
-            <TagIcon size={11} />
+          <label className="flex items-center gap-2 text-sm font-semibold text-vault-text mb-2.5">
+            <span className="w-5 h-5 rounded bg-vault-accent/15 flex items-center justify-center">
+              <TagIcon size={12} className="text-vault-accent" />
+            </span>
             Classification Tags
           </label>
-          <div className="flex flex-wrap items-center gap-1.5 bg-vault-panel border border-vault-border rounded-md px-2 py-1.5">
+          <div className="flex flex-wrap items-center gap-1.5 bg-vault-panel border border-vault-border rounded-lg px-3 py-2.5 focus-within:border-vault-accent focus-within:ring-1 focus-within:ring-vault-accent/30 transition-all">
             {tags.map((tag) => (
               <span
                 key={tag}
-                className="flex items-center gap-1 text-[11px] font-mono bg-vault-panelLight border border-vault-border text-vault-muted px-2 py-1 rounded"
+                className="flex items-center gap-1 text-xs font-mono bg-vault-panelLight border border-vault-border text-vault-muted px-2.5 py-1 rounded-md"
               >
                 {tag}
-                <button onClick={() => removeTag(tag)}>
+                <button onClick={() => removeTag(tag)} className="hover:text-red-400 transition-colors">
                   <X size={10} />
                 </button>
               </span>
@@ -176,13 +178,16 @@ export default function PromptEditorPage() {
               onChange={(e) => setTagInput(e.target.value)}
               onKeyDown={addTag}
               placeholder="Add tag..."
-              className="flex-1 min-w-[100px] bg-transparent text-xs text-vault-text focus:outline-none py-1"
+              className="flex-1 min-w-[100px] bg-transparent text-sm text-vault-text focus:outline-none py-1"
             />
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-mono uppercase tracking-wide text-vault-accent mb-2">
+          <label className="flex items-center gap-2 text-sm font-semibold text-vault-text mb-2.5">
+            <span className="w-5 h-5 rounded bg-vault-accent/15 flex items-center justify-center">
+              <Save size={11} className="text-vault-accent" />
+            </span>
             Prompt Body
           </label>
           <textarea
@@ -193,7 +198,7 @@ export default function PromptEditorPage() {
             }}
             rows={16}
             placeholder="Write the prompt content here..."
-            className="w-full bg-vault-panel border border-vault-border rounded-lg px-4 py-3 text-sm font-mono text-vault-text leading-relaxed focus:outline-none focus:border-vault-accent resize-y"
+            className="w-full bg-vault-panel border border-vault-border rounded-lg px-4 py-3.5 text-sm font-mono text-vault-text leading-relaxed focus:outline-none focus:border-vault-accent focus:ring-1 focus:ring-vault-accent/30 transition-all resize-y"
           />
         </div>
 
